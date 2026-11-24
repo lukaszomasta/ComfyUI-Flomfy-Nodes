@@ -13,12 +13,13 @@ from flomfy.frames import (  # noqa: E402
     FORMULA_PRESETS, PadToFrameFormula, fit_down, fit_up, parse_formula, resolve_formula,
 )
 from flomfy.letterbox import Letterbox, RemoveLetterbox, crop_box, letterbox_padding  # noqa: E402
+from flomfy.prepper import ImagePrepper  # noqa: E402
 from flomfy.ltx import LTXStage1Helper, stage1_size  # noqa: E402
 from flomfy.ocio import OCIOInfoParse  # noqa: E402
 
 
 def test_node_ids_are_stable():
-    assert {"FlomfyOCIOInfoParse", "FlomfyFramePadder", "FlomfyLTXStage1Helper", "FlomfyLetterbox", "FlomfyRemoveLetterbox"} <= set(NODE_CLASS_MAPPINGS)
+    assert {"FlomfyOCIOInfoParse", "FlomfyFramePadder", "FlomfyLTXStage1Helper", "FlomfyLetterbox", "FlomfyRemoveLetterbox", "FlomfyImagePrepper"} <= set(NODE_CLASS_MAPPINGS)
 
 
 @pytest.mark.parametrize("text,expected", [
@@ -167,3 +168,57 @@ def test_remove_letterbox_top_left_and_noop():
     image = torch.rand(1, 64, 128, 3)
     padded, *_, info = Letterbox().run(image, "custom", "black", "center", 64)["result"]
     assert torch.equal(RemoveLetterbox().run(padded, info)["result"][0], image)
+
+
+def test_bars_mask_uses_one_frame_of_memory():
+    _, mask, *_ = Letterbox().run(torch.rand(20, 563, 1000, 3), "LTX / LTX-2 two-stage (64)",
+                                  "black", "center")["result"]
+    assert mask.shape == (20, 576, 1024)
+    assert mask.untyped_storage().nbytes() == 576 * 1024 * 4
+
+
+def test_edge_fills_corners():
+    image = torch.zeros(1, 2, 2, 3)
+    image[0, 0, 0] = 1.0  # top-left pixel
+    from flomfy.letterbox import conform
+    out, _ = conform(image, 1, 2, 2, 2, 2, "edge")
+    assert out.shape == (1, 6, 6, 3)
+    assert torch.all(out[0, :3, :3] == 1.0) and torch.all(out[0, 3:, 3:] == 0.0)
+
+
+def _prep(image, **kw):
+    args = dict(frame_rule="LTX / LTX-2 (8n+1)", length_mode="hold_pad",
+                size_rule="LTX / LTX-2 two-stage (64)", pad_color="black", position="center")
+    args.update(kw)
+    return ImagePrepper().run(image, **args)
+
+
+def test_prepper_matches_padder_then_letterbox():
+    image = torch.rand(10, 563, 1000, 3)
+    res = _prep(image)
+    out, mask, info, w, h, ow, oh, n, frames = res["result"]
+    assert (w, h, ow, oh, n, frames) == (1000, 563, 1024, 576, 10, 17)
+    padded = PadToFrameFormula().pad(image, "LTX / LTX-2 (8n+1)", "hold_pad")[0]
+    expected = Letterbox().run(padded, "LTX / LTX-2 two-stage (64)", "black", "center")["result"][0]
+    assert torch.equal(out, expected) and mask.shape == (17, 576, 1024)
+    assert res["ui"]["flomfy_prep"] == [1000, 563, 10, 1024, 576, 17]
+    back = RemoveLetterbox().run(out, info)["result"][0]
+    assert torch.equal(back[:10], image) and torch.equal(back[10:], image[-1:].expand(7, -1, -1, -1))
+
+
+@pytest.mark.parametrize("color", ["black", "gray", "white", "edge"])
+def test_prepper_trim_and_colors(color):
+    image = torch.rand(10, 563, 1000, 3)
+    out, *_, n, frames = _prep(image, length_mode="trim", pad_color=color)["result"]
+    assert (n, frames) == (10, 9) and out.shape == (9, 576, 1024, 3)
+    expected = Letterbox().run(image[:9], "LTX / LTX-2 two-stage (64)", color, "center")["result"][0]
+    assert torch.equal(out, expected)
+
+
+def test_prepper_noop_and_custom():
+    image = torch.rand(9, 64, 128, 3)
+    out, *_ = _prep(image)["result"]
+    assert out is image
+    out, *_, frames = _prep(image, frame_rule="custom", custom_formula="16n",
+                            size_rule="custom", custom_multiple=100)["result"]
+    assert out.shape == (16, 100, 200, 3) and frames == 16

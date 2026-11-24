@@ -76,6 +76,19 @@ def fit_down(n, a, b):
     return length if length >= 1 else None
 
 
+def target_length(n, formula, length_mode):
+    """Frame count for n frames: the next valid length (hold_pad), the previous one (trim,
+    padding instead when the clip is shorter than the smallest valid length), or n (original)."""
+    if length_mode == "original":
+        return n
+    a, b = parse_formula(formula)
+    if length_mode == "trim":
+        target = fit_down(n, a, b)
+        if target is not None:
+            return target
+    return fit_up(n, a, b)
+
+
 class PadToFrameFormula:
     """Fit an IMAGE batch to a model's frame-count rule (8n+1 for LTX, 4n+1 for Wan, ...)
     by holding the last frame, trimming, or passing through."""
@@ -116,24 +129,14 @@ class PadToFrameFormula:
 
     def pad(self, images, formula, length_mode, custom_formula="8n+1"):
         n = images.shape[0]
-        if length_mode == "original":
-            return (images, n, n, 0)
-
-        a, b = parse_formula(resolve_formula(formula, custom_formula))
-
-        if length_mode == "trim":
-            target = fit_down(n, a, b)
-            if target is not None:
-                # pad_frames is negative when frames were removed
-                return (images[:target], target, n, target - n)
-            # Clip shorter than the smallest valid length: fall through to padding.
-
-        target = fit_up(n, a, b)
-        extra = target - n
-        if extra > 0:
-            hold = images[-1:].repeat(extra, 1, 1, 1)
+        target = target_length(n, resolve_formula(formula, custom_formula), length_mode)
+        if target < n:
+            images = images[:target]
+        elif target > n:
+            hold = images[-1:].repeat(target - n, 1, 1, 1)
             images = torch.cat([images, hold], dim=0)
-        return (images, target, n, extra)
+        # pad_frames is negative when frames were removed
+        return (images, target, n, target - n)
 
 
 NODE_CLASS_MAPPINGS = {

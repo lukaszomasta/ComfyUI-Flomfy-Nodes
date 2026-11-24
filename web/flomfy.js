@@ -9,11 +9,25 @@ function setLabel(node, name, text) {
 app.registerExtension({
     name: "Flomfy.Nodes",
     async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (nodeData.name !== "FlomfyLetterbox" && nodeData.name !== "FlomfyRemoveLetterbox") return;
+        const names = ["FlomfyLetterbox", "FlomfyRemoveLetterbox", "FlomfyImagePrepper"];
+        if (!names.includes(nodeData.name)) return;
         const remove = nodeData.name === "FlomfyRemoveLetterbox";
         const onExecuted = nodeType.prototype.onExecuted;
         nodeType.prototype.onExecuted = function (message) {
             const r = onExecuted?.apply(this, arguments);
+            const p = message?.flomfy_prep;
+            if (p && p.length >= 6) {
+                const [w, h, n, ow, oh, on] = p.map(Number);
+                setLabel(this, "image", `image ${w}×${h}×${n}f → ${ow}×${oh}×${on}f`);
+                setLabel(this, "original_width", `original_width ${w}`);
+                setLabel(this, "original_height", `original_height ${h}`);
+                setLabel(this, "width", `width ${ow}`);
+                setLabel(this, "height", `height ${oh}`);
+                setLabel(this, "original_length", `original_length ${n}`);
+                setLabel(this, "length", `length ${on}`);
+                this.setDirtyCanvas?.(true, true);
+                return r;
+            }
             const s = message?.flomfy_size;
             if (s && s.length >= 6) {
                 const [w, h, ow, oh, left, top] = s.map(Number);

@@ -22,6 +22,14 @@ Computes the LTX stage-1 size from an IMAGE batch: the input size divided by
 `downscale_multiplier`, each side snapped to a multiple of 32. Outputs the `image`
 unchanged (not resized), `stage1_width`, `stage1_height` and `downscale_multiplier`.
 
+### Flomfy Image Prepper (frames + letterbox) (`FlomfyImagePrepper`, `utils/video`)
+Frame Padder and Letterbox in one node: fits the frame count (`frame_rule`, `length_mode`)
+and pads the size (`size_rule`, `pad_color`, `position`) with one copy of the frames instead
+of two. Same presets as the two nodes below. Outputs `image`, `bars_mask`, `letterbox_info`
+(for Flomfy Remove Letterbox), `original_width`, `original_height`, `width`, `height`,
+`original_length`, `length`. After a run the node shows the sizes on its outputs
+(e.g. `image 1920×1080×100f → 1920×1088×105f`).
+
 ### Flomfy Letterbox (pad to size rule) (`FlomfyLetterbox`, `utils/video`)
 Pads an IMAGE batch with bars (no scaling) so width and height are multiples of the
 target model's size rule:
@@ -33,7 +41,8 @@ target model's size rule:
 | Wan 2.1 / 2.2, HunyuanVideo, Kandinsky 5, Cosmos, Mochi | 16 |
 | custom | `custom_multiple` |
 
-`pad_color`: black, gray, white, or edge (repeat the border pixels). `position`: center or
+`pad_color`: black, gray, white, or edge (repeat the border pixels). `bars_mask` is one
+frame shared across the batch, so it costs one frame of memory. `position`: center or
 top_left. Outputs the padded `image`, `bars_mask` (1 on the bars), `original_width`,
 `original_height`, `width`, `height`, `pad_left`, `pad_top`, and `letterbox_info` for
 Flomfy Remove Letterbox. After a run the node shows the sizes on its outputs (e.g. `image 1920×1080 → 1920×1088`).

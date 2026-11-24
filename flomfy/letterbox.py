@@ -1,7 +1,6 @@
 """Letterbox: pad an IMAGE batch so width and height fit a video model's size rule."""
 
 import torch
-import torch.nn.functional as F
 
 from ._common import CATEGORY_VIDEO
 
@@ -39,21 +38,43 @@ def letterbox_padding(width, height, multiple, position="center"):
     return left, top, pad_w - left, pad_h - top
 
 
-def pad_images(images, left, top, right, bottom, color):
-    """Pad (B, H, W, C) images; returns the images and a (B, H, W) mask that is 1 on the bars."""
-    b, h, w, _ = images.shape
-    mask = torch.zeros((b, h + top + bottom, w + left + right), dtype=torch.float32, device=images.device)
-    if not (left or top or right or bottom):
+def bars_mask(frames, height, width, left, top, right, bottom, device):
+    """(frames, H, W) mask, 1 on the bars. One frame expanded over the batch: the bars are
+    the same on every frame, so no per-frame memory is used."""
+    mask = torch.ones((1, height, width), dtype=torch.float32, device=device)
+    mask[:, top:height - bottom, left:width - right] = 0.0
+    return mask.expand(frames, -1, -1)
+
+
+def conform(images, frames, left, top, right, bottom, color):
+    """Pad (B, H, W, C) images with bars and fit them to `frames` frames (cut, or hold the
+    last frame) in one allocation. Returns the images and the bars mask."""
+    b, h, w, c = images.shape
+    oh, ow = h + top + bottom, w + left + right
+    mask = bars_mask(frames, oh, ow, left, top, right, bottom, images.device)
+    if frames == b and not (left or top or right or bottom):
         return images, mask
-    x = images.movedim(-1, 1)
+    n = min(b, frames)
+    out = torch.empty((frames, oh, ow, c), dtype=images.dtype, device=images.device)
+    out[:n, top:top + h, left:left + w] = images[:n]
     value = PAD_COLORS[color]
-    if value is None:
-        x = F.pad(x, (left, right, top, bottom), mode="replicate")
+    if value is None:  # edge: columns first, then full rows, so the corners repeat too
+        if left:
+            out[:n, top:top + h, :left] = out[:n, top:top + h, left:left + 1]
+        if right:
+            out[:n, top:top + h, left + w:] = out[:n, top:top + h, left + w - 1:left + w]
+        if top:
+            out[:n, :top] = out[:n, top:top + 1]
+        if bottom:
+            out[:n, top + h:] = out[:n, top + h - 1:top + h]
     else:
-        x = F.pad(x, (left, right, top, bottom), mode="constant", value=value)
-    mask[:] = 1.0
-    mask[:, top:top + h, left:left + w] = 0.0
-    return x.movedim(1, -1), mask
+        out[:n, :top] = value
+        out[:n, top + h:] = value
+        out[:n, top:top + h, :left] = value
+        out[:n, top:top + h, left + w:] = value
+    if frames > n:
+        out[n:] = out[n - 1]
+    return out, mask
 
 
 class Letterbox:
@@ -95,7 +116,7 @@ class Letterbox:
         multiple = custom_multiple if size_rule == CUSTOM else SIZE_PRESETS[size_rule]
         h, w = image.shape[1], image.shape[2]
         left, top, right, bottom = letterbox_padding(w, h, multiple, position)
-        out, mask = pad_images(image, left, top, right, bottom, pad_color)
+        out, mask = conform(image, image.shape[0], left, top, right, bottom, pad_color)
         ow, oh = w + left + right, h + top + bottom
         # Shown on the node by web/flomfy.js.
         ui = {"flomfy_size": [w, h, ow, oh, left, top]}
