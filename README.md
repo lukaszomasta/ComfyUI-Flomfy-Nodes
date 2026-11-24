@@ -35,8 +35,14 @@ target model's size rule:
 
 `pad_color`: black, gray, white, or edge (repeat the border pixels). `position`: center or
 top_left. Outputs the padded `image`, `bars_mask` (1 on the bars), `original_width`,
-`original_height`, `width`, `height`, `pad_left`, `pad_top` (crop the result back with
-these). After a run the node shows the sizes on its outputs (e.g. `image 1920×1080 → 1920×1088`).
+`original_height`, `width`, `height`, `pad_left`, `pad_top`, and `letterbox_info` for
+Flomfy Remove Letterbox. After a run the node shows the sizes on its outputs (e.g. `image 1920×1080 → 1920×1088`).
+
+### Flomfy Remove Letterbox (`FlomfyRemoveLetterbox`, `utils/video`)
+Crops the bars back off. Link `letterbox_info` from Flomfy Letterbox. If the image was
+resized after padding (stage 1 at half size, an upscaled result), the crop is scaled to
+match, e.g. 1920×1080 padded to 1920×1088, rendered at 960×544, crops to 960×540.
+Outputs `image`, `width`, `height`.
 
 ### Flomfy Frame Padder (hold last) (`FlomfyFramePadder`, `utils/ocio`)
 Fits an IMAGE batch to the frame count a video model expects. `formula` is a dropdown:

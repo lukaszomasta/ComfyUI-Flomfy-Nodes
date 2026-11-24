@@ -12,13 +12,13 @@ from flomfy import NODE_CLASS_MAPPINGS  # noqa: E402
 from flomfy.frames import (  # noqa: E402
     FORMULA_PRESETS, PadToFrameFormula, fit_down, fit_up, parse_formula, resolve_formula,
 )
-from flomfy.letterbox import Letterbox, letterbox_padding  # noqa: E402
+from flomfy.letterbox import Letterbox, RemoveLetterbox, crop_box, letterbox_padding  # noqa: E402
 from flomfy.ltx import LTXStage1Helper, stage1_size  # noqa: E402
 from flomfy.ocio import OCIOInfoParse  # noqa: E402
 
 
 def test_node_ids_are_stable():
-    assert {"FlomfyOCIOInfoParse", "FlomfyFramePadder", "FlomfyLTXStage1Helper", "FlomfyLetterbox"} <= set(NODE_CLASS_MAPPINGS)
+    assert {"FlomfyOCIOInfoParse", "FlomfyFramePadder", "FlomfyLTXStage1Helper", "FlomfyLetterbox", "FlomfyRemoveLetterbox"} <= set(NODE_CLASS_MAPPINGS)
 
 
 @pytest.mark.parametrize("text,expected", [
@@ -123,7 +123,7 @@ def test_letterbox_padding():
 def test_letterbox_node(color):
     image = torch.full((2, 563, 1000, 3), 0.25)
     res = Letterbox().run(image, "LTX / LTX-2 two-stage (64)", color, "center")
-    out, mask, w, h, ow, oh, left, top = res["result"]
+    out, mask, w, h, ow, oh, left, top, info = res["result"]
     assert (w, h, ow, oh, left, top) == (1000, 563, 1024, 576, 12, 6)
     assert out.shape == (2, 576, 1024, 3) and mask.shape == (2, 576, 1024)
     assert torch.equal(out[:, top:top + h, left:left + w], image)
@@ -139,3 +139,31 @@ def test_letterbox_custom_and_noop():
     assert out is image and mask.sum() == 0
     out, *_ = Letterbox().run(image, "custom", "black", "center", 100)["result"]
     assert out.shape == (1, 100, 200, 3)
+
+
+def test_remove_letterbox_round_trip():
+    image = torch.rand(2, 563, 1000, 3)
+    padded, *_, info = Letterbox().run(image, "LTX / LTX-2 two-stage (64)", "black", "center")["result"]
+    res = RemoveLetterbox().run(padded, info)
+    out, w, h = res["result"]
+    assert (w, h) == (1000, 563) and torch.equal(out, image)
+    assert res["ui"]["flomfy_size"] == [1024, 576, 1000, 563, 12, 6]
+
+
+def test_remove_letterbox_scaled():
+    # 1920x1080 -> 1920x1088 (4 px bars); a half-size stage-1 render is 960x544.
+    info = Letterbox().run(torch.rand(1, 1080, 1920, 3), "LTX / LTX-2 two-stage (64)",
+                           "black", "center")["result"][-1]
+    assert crop_box(info, 960, 544) == (0, 2, 960, 540)
+    assert crop_box(info, 3840, 2176) == (0, 8, 3840, 2160)
+    out, w, h = RemoveLetterbox().run(torch.rand(4, 544, 960, 3), info)["result"]
+    assert out.shape == (4, 540, 960, 3) and (w, h) == (960, 540)
+
+
+def test_remove_letterbox_top_left_and_noop():
+    image = torch.rand(1, 563, 1000, 3)
+    padded, *_, info = Letterbox().run(image, "LTX / LTX-2 two-stage (64)", "black", "top_left")["result"]
+    assert torch.equal(RemoveLetterbox().run(padded, info)["result"][0], image)
+    image = torch.rand(1, 64, 128, 3)
+    padded, *_, info = Letterbox().run(image, "custom", "black", "center", 64)["result"]
+    assert torch.equal(RemoveLetterbox().run(padded, info)["result"][0], image)

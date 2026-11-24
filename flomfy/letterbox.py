@@ -21,6 +21,9 @@ SIZE_OPTIONS = list(SIZE_PRESETS) + [CUSTOM]
 PAD_COLORS = {"black": 0.0, "gray": 0.5, "white": 1.0, "edge": None}  # edge repeats border pixels
 POSITIONS = ["center", "top_left"]
 
+# Custom socket type: a dict describing one letterbox, passed to Remove Letterbox.
+LETTERBOX_INFO = "FLOMFY_LETTERBOX"
+
 
 def round_up(value, multiple):
     return -(-value // multiple) * multiple
@@ -81,9 +84,10 @@ class Letterbox:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT", "INT", "INT", "INT")
+    # letterbox_info is last so links saved before it existed keep their slots.
+    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", "INT", "INT", "INT", "INT", LETTERBOX_INFO)
     RETURN_NAMES = ("image", "bars_mask", "original_width", "original_height",
-                    "width", "height", "pad_left", "pad_top")
+                    "width", "height", "pad_left", "pad_top", "letterbox_info")
     FUNCTION = "run"
     CATEGORY = CATEGORY_VIDEO
 
@@ -95,13 +99,57 @@ class Letterbox:
         ow, oh = w + left + right, h + top + bottom
         # Shown on the node by web/flomfy.js.
         ui = {"flomfy_size": [w, h, ow, oh, left, top]}
-        return {"ui": ui, "result": (out, mask, w, h, ow, oh, left, top)}
+        info = {"original_width": w, "original_height": h, "width": ow, "height": oh,
+                "pad_left": left, "pad_top": top}
+        return {"ui": ui, "result": (out, mask, w, h, ow, oh, left, top, info)}
+
+
+def crop_box(info, width, height):
+    """(left, top, crop_width, crop_height) of the original picture inside an image of
+    width x height, scaling the letterbox when the image was resized since padding."""
+    sx = width / info["width"]
+    sy = height / info["height"]
+    left = min(max(round(info["pad_left"] * sx), 0), width - 1)
+    top = min(max(round(info["pad_top"] * sy), 0), height - 1)
+    crop_w = min(max(round(info["original_width"] * sx), 1), width - left)
+    crop_h = min(max(round(info["original_height"] * sy), 1), height - top)
+    return left, top, crop_w, crop_h
+
+
+class RemoveLetterbox:
+    """Crop the bars Flomfy Letterbox added. Works on resized results too (stage 1 at half
+    size, upscaled output): the crop is scaled to the incoming image."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "letterbox_info": (LETTERBOX_INFO, {
+                    "tooltip": "Link from the letterbox_info output of Flomfy Letterbox.",
+                }),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE", "INT", "INT")
+    RETURN_NAMES = ("image", "width", "height")
+    FUNCTION = "run"
+    CATEGORY = CATEGORY_VIDEO
+
+    def run(self, image, letterbox_info):
+        h, w = image.shape[1], image.shape[2]
+        left, top, cw, ch = crop_box(letterbox_info, w, h)
+        out = image[:, top:top + ch, left:left + cw]
+        ui = {"flomfy_size": [w, h, cw, ch, left, top]}
+        return {"ui": ui, "result": (out, cw, ch)}
 
 
 NODE_CLASS_MAPPINGS = {
     "FlomfyLetterbox": Letterbox,
+    "FlomfyRemoveLetterbox": RemoveLetterbox,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "FlomfyLetterbox": "Flomfy Letterbox (pad to size rule)",
+    "FlomfyRemoveLetterbox": "Flomfy Remove Letterbox",
 }
