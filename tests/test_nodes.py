@@ -12,12 +12,13 @@ from flomfy import NODE_CLASS_MAPPINGS  # noqa: E402
 from flomfy.frames import (  # noqa: E402
     FORMULA_PRESETS, PadToFrameFormula, fit_down, fit_up, parse_formula, resolve_formula,
 )
+from flomfy.letterbox import Letterbox, letterbox_padding  # noqa: E402
 from flomfy.ltx import LTXStage1Helper, stage1_size  # noqa: E402
 from flomfy.ocio import OCIOInfoParse  # noqa: E402
 
 
 def test_node_ids_are_stable():
-    assert {"FlomfyOCIOInfoParse", "FlomfyFramePadder", "FlomfyLTXStage1Helper"} <= set(NODE_CLASS_MAPPINGS)
+    assert {"FlomfyOCIOInfoParse", "FlomfyFramePadder", "FlomfyLTXStage1Helper", "FlomfyLetterbox"} <= set(NODE_CLASS_MAPPINGS)
 
 
 @pytest.mark.parametrize("text,expected", [
@@ -107,3 +108,34 @@ def test_custom_and_legacy_formula():
     assert PadToFrameFormula.VALIDATE_INPUTS("8n+1") is True
     assert PadToFrameFormula.VALIDATE_INPUTS("Mochi (6n+1)") is True
     assert isinstance(PadToFrameFormula.VALIDATE_INPUTS("nonsense"), str)
+
+
+def test_letterbox_padding():
+    assert letterbox_padding(1920, 1080, 64) == (0, 4, 0, 4)
+    assert letterbox_padding(1920, 1080, 32) == (0, 4, 0, 4)
+    assert letterbox_padding(1920, 1080, 16) == (0, 4, 0, 4)
+    assert letterbox_padding(1000, 563, 64) == (12, 6, 12, 7)
+    assert letterbox_padding(1000, 563, 64, "top_left") == (0, 0, 24, 13)
+    assert letterbox_padding(1024, 576, 64) == (0, 0, 0, 0)
+
+
+@pytest.mark.parametrize("color", ["black", "gray", "white", "edge"])
+def test_letterbox_node(color):
+    image = torch.full((2, 563, 1000, 3), 0.25)
+    res = Letterbox().run(image, "LTX / LTX-2 two-stage (64)", color, "center")
+    out, mask, w, h, ow, oh, left, top = res["result"]
+    assert (w, h, ow, oh, left, top) == (1000, 563, 1024, 576, 12, 6)
+    assert out.shape == (2, 576, 1024, 3) and mask.shape == (2, 576, 1024)
+    assert torch.equal(out[:, top:top + h, left:left + w], image)
+    assert mask[:, top:top + h, left:left + w].sum() == 0 and mask[0, 0, 0] == 1
+    bar = {"black": 0.0, "gray": 0.5, "white": 1.0, "edge": 0.25}[color]
+    assert torch.allclose(out[0, 0, 0], torch.full((3,), bar))
+    assert res["ui"]["flomfy_size"] == [1000, 563, 1024, 576, 12, 6]
+
+
+def test_letterbox_custom_and_noop():
+    image = torch.rand(1, 64, 128, 3)
+    out, mask, *_ = Letterbox().run(image, "custom", "black", "center", 64)["result"]
+    assert out is image and mask.sum() == 0
+    out, *_ = Letterbox().run(image, "custom", "black", "center", 100)["result"]
+    assert out.shape == (1, 100, 200, 3)

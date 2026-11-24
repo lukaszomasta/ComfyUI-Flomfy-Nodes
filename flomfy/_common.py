@@ -3,6 +3,7 @@
 # Kept as "utils/ocio" so the nodes stay where existing users expect them.
 CATEGORY_OCIO = "utils/ocio"
 CATEGORY_LTX = "utils/ltx"
+CATEGORY_VIDEO = "utils/video"
 
 
 def snap(v, multiple):

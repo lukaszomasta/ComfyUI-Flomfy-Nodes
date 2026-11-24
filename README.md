@@ -22,6 +22,22 @@ Computes the LTX stage-1 size from an IMAGE batch: the input size divided by
 `downscale_multiplier`, each side snapped to a multiple of 32. Outputs the `image`
 unchanged (not resized), `stage1_width`, `stage1_height` and `downscale_multiplier`.
 
+### Flomfy Letterbox (pad to size rule) (`FlomfyLetterbox`, `utils/video`)
+Pads an IMAGE batch with bars (no scaling) so width and height are multiples of the
+target model's size rule:
+
+| Preset | Multiple |
+|---|---|
+| LTX / LTX-2 two-stage (default) | 64, so stage 1 at half size is still a multiple of 32 |
+| LTX / LTX-2, MiniMax H3 | 32 |
+| Wan 2.1 / 2.2, HunyuanVideo, Kandinsky 5, Cosmos, Mochi | 16 |
+| custom | `custom_multiple` |
+
+`pad_color`: black, gray, white, or edge (repeat the border pixels). `position`: center or
+top_left. Outputs the padded `image`, `bars_mask` (1 on the bars), `original_width`,
+`original_height`, `width`, `height`, `pad_left`, `pad_top` (crop the result back with
+these). After a run the node shows the sizes on its outputs (e.g. `image 1920×1080 → 1920×1088`).
+
 ### Flomfy Frame Padder (hold last) (`FlomfyFramePadder`, `utils/ocio`)
 Fits an IMAGE batch to the frame count a video model expects. `formula` is a dropdown:
 

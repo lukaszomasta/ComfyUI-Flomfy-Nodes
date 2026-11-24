@@ -5,9 +5,9 @@ optionally NODE_DISPLAY_NAME_MAPPINGS), then add it to MODULES below.
 Node IDs are prefixed "Flomfy" and must never be renamed: saved workflows use them.
 """
 
-from . import frames, ltx, ocio
+from . import frames, letterbox, ltx, ocio
 
-MODULES = [ocio, frames, ltx]
+MODULES = [ocio, frames, ltx, letterbox]
 
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
