@@ -6,7 +6,7 @@ Helper nodes shipped with Flomfy.
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/OWNER/ComfyUI-Flomfy-Nodes
+git clone https://github.com/lukaszomasta/ComfyUI-Flomfy-Nodes
 ```
 
 No extra dependencies (uses the torch that ComfyUI already has). Restart ComfyUI.

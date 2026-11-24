@@ -6,7 +6,7 @@ requires-python = ">=3.10"
 dependencies = []
 
 [project.urls]
-Repository = "https://github.com/OWNER/ComfyUI-Flomfy-Nodes"
+Repository = "https://github.com/lukaszomasta/ComfyUI-Flomfy-Nodes"
 
 [tool.comfy]
 PublisherId = ""
