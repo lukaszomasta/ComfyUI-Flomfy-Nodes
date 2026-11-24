@@ -10,11 +10,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flomfy import NODE_CLASS_MAPPINGS  # noqa: E402
 from flomfy.frames import PadToFrameFormula, fit_down, fit_up, parse_formula  # noqa: E402
+from flomfy.ltx import LTXStage1Helper, stage1_size  # noqa: E402
 from flomfy.ocio import OCIOInfoParse  # noqa: E402
 
 
 def test_node_ids_are_stable():
-    assert {"FlomfyOCIOInfoParse", "FlomfyFramePadder"} <= set(NODE_CLASS_MAPPINGS)
+    assert {"FlomfyOCIOInfoParse", "FlomfyFramePadder", "FlomfyLTXStage1Helper"} <= set(NODE_CLASS_MAPPINGS)
 
 
 @pytest.mark.parametrize("text,expected", [
@@ -63,5 +64,20 @@ def test_original():
 
 def test_ocio_info_parse():
     info = "shot_010.####.exr  97 frame(s)  frames [1001-1097]  3840x2160"
-    assert OCIOInfoParse().parse(info, 2) == (97, 1001, 1097, 3840, 2160, 1920, 1088)
-    assert OCIOInfoParse().parse("nothing here", 2) == (0, 0, 0, 0, 0, 0, 0)
+    assert OCIOInfoParse().parse(info) == (97, 1001, 1097, 3840, 2160)
+    assert OCIOInfoParse().parse("nothing here") == (0, 0, 0, 0, 0)
+
+
+def test_stage1_size():
+    assert stage1_size(3840, 2160, 2) == (1920, 1088)
+    assert stage1_size(1920, 1080, 1) == (1920, 1088)
+    assert stage1_size(100, 40, 4) == (32, 32)
+
+
+@pytest.mark.parametrize("method", ["area", "bicubic", "bilinear", "nearest-exact"])
+def test_ltx_stage1_helper(method):
+    image = torch.rand(3, 216, 384, 3)
+    out, w, h, mult = LTXStage1Helper().run(image, 2, method)
+    assert (w, h, mult) == (192, 96, 2)
+    assert out.shape == (3, 96, 192, 3)
+    assert out.min() >= 0 and out.max() <= 1
