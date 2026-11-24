@@ -9,7 +9,9 @@ import torch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flomfy import NODE_CLASS_MAPPINGS  # noqa: E402
-from flomfy.frames import PadToFrameFormula, fit_down, fit_up, parse_formula  # noqa: E402
+from flomfy.frames import (  # noqa: E402
+    FORMULA_PRESETS, PadToFrameFormula, fit_down, fit_up, parse_formula, resolve_formula,
+)
 from flomfy.ltx import LTXStage1Helper, stage1_size  # noqa: E402
 from flomfy.ocio import OCIOInfoParse  # noqa: E402
 
@@ -79,3 +81,29 @@ def test_ltx_stage1_helper_passes_image_through():
     out, w, h, mult = LTXStage1Helper().run(image, 2)
     assert (w, h, mult) == (192, 96, 2)
     assert out is image
+
+
+def test_presets_parse():
+    for label, formula in FORMULA_PRESETS.items():
+        assert resolve_formula(label) == formula
+        parse_formula(formula)
+
+
+def test_preset_padding():
+    pad = PadToFrameFormula().pad
+    assert pad(_frames(10), "LTX / LTX-2 (8n+1)", "hold_pad")[1] == 17
+    assert pad(_frames(10), "Wan 2.1 / 2.2 (4n+1)", "hold_pad")[1] == 13
+    assert pad(_frames(10), "Mochi (6n+1)", "hold_pad")[1] == 13
+    assert pad(_frames(100), "MiniMax H3 (17n+5)", "hold_pad")[1] == 107
+    assert pad(_frames(100), "MiniMax H3 (17n+5)", "trim")[1] == 90
+    assert pad(_frames(3), "MiniMax H3 (17n+5)", "hold_pad")[1] == 5
+
+
+def test_custom_and_legacy_formula():
+    pad = PadToFrameFormula().pad
+    assert pad(_frames(10), "custom", "hold_pad", "16n")[1] == 16
+    # Workflows saved before the dropdown store the formula text itself.
+    assert pad(_frames(10), "8n+1", "hold_pad")[1] == 17
+    assert PadToFrameFormula.VALIDATE_INPUTS("8n+1") is True
+    assert PadToFrameFormula.VALIDATE_INPUTS("Mochi (6n+1)") is True
+    assert isinstance(PadToFrameFormula.VALIDATE_INPUTS("nonsense"), str)

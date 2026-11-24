@@ -9,6 +9,21 @@ from ._common import CATEGORY_OCIO
 
 LENGTH_MODES = ["hold_pad", "trim", "original"]
 
+# Frame-count rules, taken from each model's latent node in ComfyUI
+# (latent frames = (length - 1) // a + 1, or MiniMax H3's own 17n+5 alignment).
+FORMULA_PRESETS = {
+    "LTX / LTX-2 (8n+1)": "8n+1",
+    "Wan 2.1 / 2.2 (4n+1)": "4n+1",
+    "HunyuanVideo (4n+1)": "4n+1",
+    "Kandinsky 5 (4n+1)": "4n+1",
+    "Cosmos Predict2 (4n+1)": "4n+1",
+    "Cosmos 1 (8n+1)": "8n+1",
+    "Mochi (6n+1)": "6n+1",
+    "MiniMax H3 (17n+5)": "17n+5",
+}
+CUSTOM = "custom"
+FORMULA_OPTIONS = list(FORMULA_PRESETS) + [CUSTOM]
+
 # Accepts: 8n+1, 4n+1, 16n, n, 8*n+1, 8n-3, "8 n + 1", 8N+1
 _FORMULA_RE = re.compile(r"^\s*(\d*)\s*\*?\s*n\s*(?:([+-])\s*(\d+))?\s*$", re.IGNORECASE)
 
@@ -27,6 +42,17 @@ def parse_formula(formula):
     if m.group(2) == "-":
         b = -b
     return a, b
+
+
+def resolve_formula(formula, custom_formula="8n+1"):
+    """Turn the dropdown value into an a*n+b formula string.
+
+    A value that is neither a preset nor "custom" is used as a formula itself: workflows
+    saved before the dropdown existed store the formula text (e.g. "8n+1") there.
+    """
+    if formula == CUSTOM:
+        return custom_formula
+    return FORMULA_PRESETS.get(formula, formula)
 
 
 def smallest_valid(a, b):
@@ -51,16 +77,23 @@ def fit_down(n, a, b):
 
 
 class PadToFrameFormula:
-    """Fit an IMAGE batch to a*n+b frames (8n+1 for LTX, 4n+1 for Wan, ...) by holding
-    the last frame, trimming, or passing through."""
+    """Fit an IMAGE batch to a model's frame-count rule (8n+1 for LTX, 4n+1 for Wan, ...)
+    by holding the last frame, trimming, or passing through."""
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "images": ("IMAGE",),
-                "formula": ("STRING", {"default": "8n+1"}),
+                "formula": (FORMULA_OPTIONS, {
+                    "default": FORMULA_OPTIONS[0],
+                    "tooltip": "Frame-count rule of the target model. 'custom' uses custom_formula.",
+                }),
                 "length_mode": (LENGTH_MODES, {"default": "hold_pad"}),
+                "custom_formula": ("STRING", {
+                    "default": "8n+1",
+                    "tooltip": "Used when formula is 'custom'. Form a*n+b, e.g. 8n+1, 4n+1, 16n.",
+                }),
             }
         }
 
@@ -69,12 +102,24 @@ class PadToFrameFormula:
     FUNCTION = "pad"
     CATEGORY = CATEGORY_OCIO
 
-    def pad(self, images, formula, length_mode):
+    @classmethod
+    def VALIDATE_INPUTS(cls, formula):
+        # Listing `formula` here replaces ComfyUI's dropdown check, so old workflows that
+        # saved a formula string (e.g. "8n+1") still run.
+        if formula in FORMULA_PRESETS or formula == CUSTOM:
+            return True
+        try:
+            parse_formula(formula)
+        except ValueError as e:
+            return str(e)
+        return True
+
+    def pad(self, images, formula, length_mode, custom_formula="8n+1"):
         n = images.shape[0]
         if length_mode == "original":
             return (images, n, n, 0)
 
-        a, b = parse_formula(formula)
+        a, b = parse_formula(resolve_formula(formula, custom_formula))
 
         if length_mode == "trim":
             target = fit_down(n, a, b)
