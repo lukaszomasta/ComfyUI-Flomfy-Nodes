@@ -74,10 +74,8 @@ def test_stage1_size():
     assert stage1_size(100, 40, 4) == (32, 32)
 
 
-@pytest.mark.parametrize("method", ["area", "bicubic", "bilinear", "nearest-exact"])
-def test_ltx_stage1_helper(method):
+def test_ltx_stage1_helper_passes_image_through():
     image = torch.rand(3, 216, 384, 3)
-    out, w, h, mult = LTXStage1Helper().run(image, 2, method)
+    out, w, h, mult = LTXStage1Helper().run(image, 2)
     assert (w, h, mult) == (192, 96, 2)
-    assert out.shape == (3, 96, 192, 3)
-    assert out.min() >= 0 and out.max() <= 1
+    assert out is image

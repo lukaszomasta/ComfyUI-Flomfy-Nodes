@@ -18,10 +18,9 @@ Parses the OCIORead `info` string into `frame_count`, `first_frame`, `last_frame
 `width`, `height`.
 
 ### Flomfy LTX Stage1 Helper (`FlomfyLTXStage1Helper`, `utils/ltx`)
-Downscales an IMAGE batch to the LTX stage-1 size: the input size divided by
-`downscale_multiplier`, each side snapped to a multiple of 32 (`resize_method`: area,
-bicubic, bilinear, nearest-exact). Outputs the resized `image`, `stage1_width`,
-`stage1_height` and `downscale_multiplier`.
+Computes the LTX stage-1 size from an IMAGE batch: the input size divided by
+`downscale_multiplier`, each side snapped to a multiple of 32. Outputs the `image`
+unchanged (not resized), `stage1_width`, `stage1_height` and `downscale_multiplier`.
 
 ### Flomfy Frame Padder (hold last) (`FlomfyFramePadder`, `utils/ocio`)
 Fits an IMAGE batch to a length of the form `a*n+b` (`8n+1` for LTX, `4n+1` for Wan, ...).
