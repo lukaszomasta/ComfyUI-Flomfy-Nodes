@@ -1,0 +1,17 @@
+[project]
+name = "comfyui-flomfy-nodes"
+description = "Helper nodes from Flomfy: OCIO info parsing and frame-count padding for video models (8n+1, 4n+1, ...)."
+version = "1.0.0"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/OWNER/ComfyUI-Flomfy-Nodes"
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "ComfyUI-Flomfy-Nodes"
+Icon = ""
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
