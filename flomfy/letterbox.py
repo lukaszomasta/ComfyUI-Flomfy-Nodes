@@ -91,7 +91,7 @@ class Letterbox:
                                "'custom' uses custom_multiple.",
                 }),
                 "pad_color": (list(PAD_COLORS), {
-                    "default": "black",
+                    "default": "edge",
                     "tooltip": "Bar color. 'edge' repeats the border pixels instead.",
                 }),
                 "position": (POSITIONS, {

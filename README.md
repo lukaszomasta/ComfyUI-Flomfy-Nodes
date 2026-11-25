@@ -41,7 +41,7 @@ target model's size rule:
 | Wan 2.1 / 2.2, HunyuanVideo, Kandinsky 5, Cosmos, Mochi | 16 |
 | custom | `custom_multiple` |
 
-`pad_color`: black, gray, white, or edge (repeat the border pixels). `bars_mask` is one
+`pad_color`: edge (default, repeats the border pixels), black, gray, or white. `bars_mask` is one
 frame shared across the batch, so it costs one frame of memory. `position`: center or
 top_left. Outputs the padded `image`, `bars_mask` (1 on the bars), `original_width`,
 `original_height`, `width`, `height`, `pad_left`, `pad_top`, and `letterbox_info` for
