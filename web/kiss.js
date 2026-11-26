@@ -1,8 +1,9 @@
 // Flomfy node kissing, like Flame: while dragging a node, hold Alt and tap Shift.
 // A pip sticks out of one of the node's inputs; touch its tip to another node's
-// output and let go of the mouse to connect them. Each extra Shift tap (Alt still
-// held) moves the pip to the next input. Connected inputs are included, so you can
-// kiss again to replace a connection. Esc hides the pip. Ctrl+Z undoes the kiss.
+// output and let go of Alt to connect them; the node stays in your hand. Each extra
+// Shift tap (Alt still held) moves the pip to the next input. Connected inputs are
+// included, so you can kiss again to replace a connection. Letting go of the mouse or
+// Esc drops the pip without connecting. Ctrl+Z undoes the kiss.
 //
 // Classic (canvas) node rendering only; it does nothing with Nodes 2.0 (Vue nodes).
 const { app } = window.comfyAPI.app;
@@ -151,11 +152,17 @@ function commit(node, slot, target) {
     if (!node || !target || slot === undefined) return;
     const c = canvas();
     if (!node.graph || node.graph !== target.node.graph) return;
+    // The drag holds an undo bracket open until the mouse is released. Close it
+    // (records the move so far), connect in a bracket of its own, then reopen it for
+    // the rest of the drag, so Ctrl+Z undoes just the kiss.
+    const midDrag = !!c.isDragging;
+    if (midDrag) c.emitAfterChange?.();
     c.emitBeforeChange?.();
     try {
         target.node.connect(target.slot, node, slot);
     } finally {
         c.emitAfterChange?.();
+        if (midDrag) c.emitBeforeChange?.();
     }
     c.setDirty(true, true);
 }
@@ -246,20 +253,25 @@ function onKeyDown(e) {
 function onKeyUp(e) {
     const key = modKey(e);
     if (key) held.delete(key);
+    if (key === "Alt" && active()) {
+        // Letting go of Alt is the kiss.
+        const node = kiss.node;
+        const slot = inputIndex();
+        const target = findTarget();
+        reset();
+        redraw();
+        commit(node, slot, target);
+    }
     if (!swallowed.delete(e.code || key)) return;
     e.preventDefault();
     e.stopImmediatePropagation();
 }
 
 function onPointerUp() {
+    // Dropping the node without letting go of Alt first: no kiss.
     if (!active()) return;
-    const node = kiss.node;
-    const slot = inputIndex();
-    const target = findTarget();
     reset();
     redraw();
-    // Connect after the drag has finished, so the move and the kiss are separate undo steps.
-    setTimeout(() => commit(node, slot, target), 0);
 }
 
 app.registerExtension({
