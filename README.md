@@ -4,6 +4,15 @@ Helper nodes shipped with Flomfy.
 
 ## Install
 
+With ComfyUI Manager: search for **ComfyUI-Flomfy-Nodes** in the Custom Nodes Manager and install it.
+Or with comfy-cli:
+
+```bash
+comfy node install comfyui-flomfy-nodes
+```
+
+Or by hand:
+
 ```bash
 cd ComfyUI/custom_nodes
 git clone https://github.com/lukaszomasta/ComfyUI-Flomfy-Nodes
@@ -83,3 +92,7 @@ Node IDs start with `Flomfy` and must not be renamed once released (saved workfl
 ```bash
 python -m pytest tests
 ```
+
+## License
+
+MIT, see [LICENSE](LICENSE).

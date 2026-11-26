@@ -1,15 +1,18 @@
 [project]
 name = "comfyui-flomfy-nodes"
-description = "Helper nodes from Flomfy: OCIO info parsing and frame-count padding for video models (8n+1, 4n+1, ...)."
+description = "Video prep nodes: OCIO info parsing, frame padding to model frame rules (LTX 8n+1, Wan 4n+1, MiniMax 17n+5, ...), letterbox to size rules and back, LTX stage1 sizes."
 version = "1.0.0"
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = []
 
 [project.urls]
 Repository = "https://github.com/lukaszomasta/ComfyUI-Flomfy-Nodes"
+Documentation = "https://github.com/lukaszomasta/ComfyUI-Flomfy-Nodes#readme"
+"Bug Tracker" = "https://github.com/lukaszomasta/ComfyUI-Flomfy-Nodes/issues"
 
 [tool.comfy]
-PublisherId = ""
+PublisherId = "lukaszomasta"
 DisplayName = "ComfyUI-Flomfy-Nodes"
 Icon = ""
 
