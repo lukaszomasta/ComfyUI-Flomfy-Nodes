@@ -19,6 +19,8 @@ const kiss = {
 };
 
 const swallowed = new Set();  // keys whose keydown we hid from the canvas
+const held = new Set();       // "Alt" / "Shift" currently down
+window.__flomfyKiss = { kiss, held };  // for debugging in the browser console
 
 function enabled() {
     const store = app.extensionManager?.setting;
@@ -50,7 +52,8 @@ function redraw() {
 }
 
 function isNode(item) {
-    return item && Array.isArray(item.inputs) && Array.isArray(item.pos) && item.size;
+    // pos/size are typed arrays in this LiteGraph, so no Array.isArray on them.
+    return !!item && Array.isArray(item.inputs) && typeof item.getConnectionPos === "function";
 }
 
 function selectedNodes() {
@@ -144,11 +147,7 @@ function cycle() {
     redraw();
 }
 
-function commit() {
-    const { node, target } = kiss;
-    const slot = inputIndex();
-    reset();
-    redraw();
+function commit(node, slot, target) {
     if (!node || !target || slot === undefined) return;
     const c = canvas();
     if (!node.graph || node.graph !== target.node.graph) return;
@@ -179,6 +178,7 @@ function drawPip(ctx) {
     if (!active() || !kiss.node.graph) return;
     const input = kiss.node.inputs[inputIndex()];
     if (!input) return;
+    kiss.target = findTarget();
     const { slot, tip } = pipGeometry();
     const color = slotColor(input.type);
     ctx.save();
@@ -212,7 +212,17 @@ function dragging() {
     return !!c && c.isDragging && c.pointer?.isDown !== false;
 }
 
+// Physical keys, not e.key: on Linux, Shift pressed while Alt is held (and the other
+// way round) arrives as e.key "Meta", so e.key and e.altKey can't be trusted here.
+function modKey(e) {
+    if (e.code?.startsWith("Shift")) return "Shift";
+    if (e.code?.startsWith("Alt")) return "Alt";
+    return e.key === "Shift" || e.key === "Alt" ? e.key : null;
+}
+
 function onKeyDown(e) {
+    const key = modKey(e);
+    if (key) held.add(key);
     if (!enabled() || !dragging()) return;
     if (e.key === "Escape" && active()) {
         reset();
@@ -221,44 +231,35 @@ function onKeyDown(e) {
         e.stopImmediatePropagation();
         return;
     }
-    if (e.key !== "Shift" && e.key !== "Alt") return;
+    if (!key) return;
     // Plain Shift keeps its snap-to-grid job. With Alt (or a pip up) the keys are ours:
     // the canvas must not see Shift, and the browser must not open the menu bar on Alt.
-    if (e.key === "Shift" && !e.altKey && !active()) return;
-    swallowed.add(e.key);
+    if (key === "Shift" && !held.has("Alt") && !active()) return;
+    swallowed.add(e.code || key);
     e.preventDefault();
     e.stopImmediatePropagation();
-    if (e.repeat) return;
-    const tapped = (e.key === "Shift" && e.altKey) || (e.key === "Alt" && e.shiftKey);
-    if (!tapped) return;
+    if (e.repeat || !held.has("Alt") || !held.has("Shift")) return;
     if (!active()) start();
-    else if (e.key === "Shift") cycle();
+    else if (key === "Shift") cycle();
 }
 
 function onKeyUp(e) {
-    if (!swallowed.delete(e.key)) return;
+    const key = modKey(e);
+    if (key) held.delete(key);
+    if (!swallowed.delete(e.code || key)) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-}
-
-function onPointerMove() {
-    if (!active()) return;
-    if (!dragging()) {
-        reset();
-        redraw();
-        return;
-    }
-    const t = findTarget();
-    if (t?.node !== kiss.target?.node || t?.slot !== kiss.target?.slot) {
-        kiss.target = t;
-        redraw();
-    }
 }
 
 function onPointerUp() {
     if (!active()) return;
-    // Let the drag finish first, so the move and the kiss are separate undo steps.
-    setTimeout(commit, 0);
+    const node = kiss.node;
+    const slot = inputIndex();
+    const target = findTarget();
+    reset();
+    redraw();
+    // Connect after the drag has finished, so the move and the kiss are separate undo steps.
+    setTimeout(() => commit(node, slot, target), 0);
 }
 
 app.registerExtension({
@@ -283,8 +284,11 @@ app.registerExtension({
         };
         window.addEventListener("keydown", onKeyDown, true);
         window.addEventListener("keyup", onKeyUp, true);
-        window.addEventListener("pointermove", onPointerMove, true);
         window.addEventListener("pointerup", onPointerUp, true);
-        window.addEventListener("blur", () => { if (active()) { reset(); redraw(); } });
+        window.addEventListener("blur", () => {
+            held.clear();
+            if (active()) { reset(); redraw(); }
+        });
+        console.log("[Flomfy] node kissing ready: drag a node, hold Alt, tap Shift");
     },
 });
