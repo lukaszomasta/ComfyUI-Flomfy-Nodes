@@ -94,6 +94,13 @@ that passes through it. Esc cancels. Shift + drag on a node still snaps to grid.
 
 Off switch: Settings > Flomfy > Link cutting. Classic canvas rendering only.
 
+## D-click delete (`web/delete.js`)
+
+Hold D and click a node to delete it, as one undo step (Ctrl+Z). While D is held the node
+under the mouse gets a red outline. Typing "d" in a text field does nothing special.
+
+Off switch: Settings > Flomfy > D-click delete. Classic canvas rendering only.
+
 ## Adding nodes
 
 Put a module in `flomfy/` with `NODE_CLASS_MAPPINGS` / `NODE_DISPLAY_NAME_MAPPINGS`,
