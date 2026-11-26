@@ -12,7 +12,7 @@ Documentation = "https://github.com/lukaszomasta/ComfyUI-Flomfy-Nodes#readme"
 "Bug Tracker" = "https://github.com/lukaszomasta/ComfyUI-Flomfy-Nodes/issues"
 
 [tool.comfy]
-PublisherId = "lukaszomasta"
+PublisherId = "pandavfx"
 DisplayName = "ComfyUI-Flomfy-Nodes"
 Icon = ""
 
