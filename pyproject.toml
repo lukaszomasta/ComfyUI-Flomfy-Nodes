@@ -1,16 +1,16 @@
 [project]
-name = "flomfy-flame-node-tree"
-description = "Flomfy for ComfyUI: Flame-style node tree tools (node kissing, link cutting, D-click delete) and helper nodes (OCIO info, frame padding, letterbox, LTX stage1)."
+name = "comfyui-flomfy-nodes"
+description = "Helper nodes from Flomfy: OCIO info parsing and frame-count padding for video models (8n+1, 4n+1, ...)."
 version = "1.0.0"
 requires-python = ">=3.10"
 dependencies = []
 
 [project.urls]
-Repository = "https://github.com/lukaszomasta/Flomfy-Flame-Node-Tree"
+Repository = "https://github.com/lukaszomasta/ComfyUI-Flomfy-Nodes"
 
 [tool.comfy]
 PublisherId = ""
-DisplayName = "Flomfy-Flame-Node-Tree"
+DisplayName = "ComfyUI-Flomfy-Nodes"
 Icon = ""
 
 [tool.pytest.ini_options]

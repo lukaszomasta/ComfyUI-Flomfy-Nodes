@@ -1,4 +1,4 @@
-"""Flomfy-Flame-Node-Tree: Flame-style node tree tools and helper nodes from Flomfy."""
+"""ComfyUI-Flomfy-Nodes: helper nodes shipped with Flomfy (OCIO info parsing, frame padding)."""
 
 from .flomfy import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
 

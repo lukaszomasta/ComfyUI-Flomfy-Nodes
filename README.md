@@ -1,12 +1,12 @@
-# Flomfy-Flame-Node-Tree
+# ComfyUI-Flomfy-Nodes
 
-Flomfy for ComfyUI: Flame-style node tree tools and helper nodes shipped with Flomfy.
+Helper nodes shipped with Flomfy.
 
 ## Install
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/lukaszomasta/Flomfy-Flame-Node-Tree
+git clone https://github.com/lukaszomasta/ComfyUI-Flomfy-Nodes
 ```
 
 No extra dependencies (uses the torch that ComfyUI already has). Restart ComfyUI.
