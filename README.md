@@ -85,6 +85,14 @@ from the move. Plain Shift during a drag still snaps to grid.
 Off switch: Settings > Flomfy > Node kissing. Classic canvas rendering only; it does
 nothing with Nodes 2.0 (Vue nodes).
 
+## Link cutting (`web/cut.js`)
+
+Shift + drag on empty canvas draws a red dashed knife line; links it crosses turn red.
+Release to cut them, as one undo step (Ctrl+Z). Cutting through a reroute cuts every link
+that passes through it. Esc cancels. Shift + drag on a node still snaps to grid.
+
+Off switch: Settings > Flomfy > Link cutting. Classic canvas rendering only.
+
 ## Adding nodes
 
 Put a module in `flomfy/` with `NODE_CLASS_MAPPINGS` / `NODE_DISPLAY_NAME_MAPPINGS`,
