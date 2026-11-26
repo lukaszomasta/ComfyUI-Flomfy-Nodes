@@ -72,6 +72,19 @@ Workflows saved with a typed formula (before the dropdown) keep working.
 
 Outputs `images`, `length`, `original_length`, `pad_frames` (negative when trimmed).
 
+## Node kissing (`web/kiss.js`)
+
+Flame-style kissing on the canvas. While dragging a node, hold Alt and tap Shift: a pip
+sticks out of the node's first input, with its name and `n/total`. Each further Shift tap
+(Alt still held) moves it to the next input; plain inputs come first, then widget inputs,
+and inputs that are already connected are included so a kiss can replace a link. Touch the
+pip's tip to an output of the same type on another node (it gets a white ring) and release
+the mouse to connect. Esc hides the pip. The kiss is its own undo step (Ctrl+Z), separate
+from the move. Plain Shift during a drag still snaps to grid.
+
+Off switch: Settings > Flomfy > Node kissing. Classic canvas rendering only; it does
+nothing with Nodes 2.0 (Vue nodes).
+
 ## Adding nodes
 
 Put a module in `flomfy/` with `NODE_CLASS_MAPPINGS` / `NODE_DISPLAY_NAME_MAPPINGS`,
